@@ -1,0 +1,756 @@
+openapi: 3.0.3
+info:
+  title: ipfs-shard Internal API
+  description: |
+    HTTP REST API for ipfs-shard IPFS node with S3 storage backend.
+
+    All endpoints run on the internal API server (default port 4000, configurable via `NODE_INTERNAL_PORT`).
+
+    This API provides network querying, content management, metrics, and node status endpoints.
+
+    **Security Note:** This API is for internal use only and should be restricted to localhost (`API_HOST=127.0.0.1`).
+    Do not expose on public networks. The P2P network (libp2p ports 4001-4002) is separate and must remain public.
+
+    See [Network Security](https://github.com/yourusername/ipfs-shard#network-security) for details.
+  version: 0.7.0
+  contact:
+    name: ipfs-shard Contributors
+    url: https://github.com/yourusername/ipfs-shard
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:4000
+    description: Local development server (default)
+  - url: http://127.0.0.1:4000
+    description: Localhost only (recommended for production)
+  - url: http://{host}:{port}
+    variables:
+      host:
+        default: 127.0.0.1
+        description: API binding address (use 127.0.0.1 for localhost, only 0.0.0.0 if behind authenticated reverse proxy)
+      port:
+        default: '4000'
+        description: API port (configurable via NODE_INTERNAL_PORT)
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns node status including peer ID, connection count, uptime, and advertised addresses.
+      operationId: getHealth
+      tags:
+        - Status
+      responses:
+        '200':
+          description: Node is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /stats:
+    get:
+      summary: Comprehensive node statistics
+      description: |
+        Aggregates node telemetry including blockstore state, peer information, DHT activity, and S3 bucket health.
+
+        Suitable for dashboards and monitoring. S3 stats are cached (60-second TTL).
+      operationId: getStats
+      tags:
+        - Status
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: |
+        Exposes node telemetry in Prometheus text exposition format.
+
+        Includes libp2p bandwidth counters, peer metrics, block operations, HTTP latencies, and standard Node.js runtime metrics.
+      operationId: getMetrics
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Prometheus text exposition format
+        '500':
+          description: Internal server error
+  /peers:
+    get:
+      summary: List known peers
+      description: Returns all known peer IDs in the peerStore (both connected and disconnected).
+      operationId: getPeers
+      tags:
+        - Network
+      responses:
+        '200':
+          description: Peers retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeersResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /peers/detailed:
+    get:
+      summary: List detailed peer connections
+      description: Returns all active libp2p connections with full metadata.
+      operationId: getPeersDetailed
+      tags:
+        - Network
+      responses:
+        '200':
+          description: Connections retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedPeersResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /peers/detailed/{peerId}:
+    get:
+      summary: Get peer connection details
+      description: Returns detailed information for a specific connected peer including latency and agent version.
+      operationId: getPeerDetails
+      tags:
+        - Network
+      parameters:
+        - name: peerId
+          in: path
+          required: true
+          description: Peer ID (prefix or full ID)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Peer details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeerDetail'
+        '404':
+          description: Peer not found or not connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /connections:
+    get:
+      summary: List active connections
+      description: Returns all active libp2p connections.
+      operationId: getConnections
+      tags:
+        - Network
+      responses:
+        '200':
+          description: Connections retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /connect:
+    post:
+      summary: Connect to a peer
+      description: Establish a libp2p connection to a peer via its multiaddr.
+      operationId: connectPeer
+      tags:
+        - Network
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                peer:
+                  type: string
+                  description: Peer multiaddr (e.g., /ip4/1.2.3.4/tcp/4001/p2p/12D3Koo...)
+              required:
+                - peer
+      responses:
+        '200':
+          description: Connection successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  peer:
+                    type: string
+        '400':
+          description: Invalid or missing peer field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /ping:
+    post:
+      summary: Ping a peer
+      description: Measure latency to a peer via libp2p ping protocol.
+      operationId: pingPeer
+      tags:
+        - Network
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                peer:
+                  type: string
+                  description: Peer multiaddr
+              required:
+                - peer
+      responses:
+        '200':
+          description: Ping successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  latency:
+                    type: integer
+                    description: Round-trip latency in milliseconds
+        '400':
+          description: Invalid multiaddr
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Ping failed (peer unreachable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /providers/{cid}:
+    get:
+      summary: Find content providers
+      description: Query DHT for peers providing a specific content identifier.
+      operationId: getProvidersByCid
+      tags:
+        - DHT
+      parameters:
+        - name: cid
+          in: path
+          required: true
+          description: Content identifier (CIDv0 or CIDv1)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provider query completed (may include partial results if timed out)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvidersResponse'
+        '400':
+          description: Invalid CID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /providers:
+    post:
+      summary: Find content providers (POST)
+      description: Query DHT for peers providing specific content (alternative to GET /{cid}).
+      operationId: postProviders
+      tags:
+        - DHT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cid:
+                  type: string
+                  description: Content identifier
+              required:
+                - cid
+      responses:
+        '200':
+          description: Provider query completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvidersResponse'
+        '400':
+          description: Invalid CID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /blocks/{cid}:
+    get:
+      summary: Check block existence
+      description: Check if a block exists in the local S3 blockstore.
+      operationId: checkBlockExists
+      tags:
+        - Blockstore
+      parameters:
+        - name: cid
+          in: path
+          required: true
+          description: Content identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block existence checked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cid:
+                    type: string
+                  exists:
+                    type: boolean
+        '400':
+          description: Invalid CID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /announce:
+    post:
+      summary: Announce content to DHT
+      description: |
+        Announce content availability to the DHT.
+
+        Fire-and-forget: returns immediately, announcement happens asynchronously.
+      operationId: announceContent
+      tags:
+        - DHT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cid:
+                  type: string
+                  description: Content identifier to announce
+              required:
+                - cid
+      responses:
+        '200':
+          description: Announcement accepted (processed asynchronously)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '400':
+          description: Invalid or missing CID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Failed to parse request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /dag/stat:
+    post:
+      summary: Get DAG statistics
+      description: Get size and block count for a DAG (directed acyclic graph) rooted at a CID.
+      operationId: getDagStat
+      tags:
+        - Blockstore
+      parameters:
+        - name: arg
+          in: query
+          required: true
+          description: Content identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DAG stat retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Size:
+                    type: integer
+                    description: Total size in bytes
+                  NumBlocks:
+                    type: integer
+                    description: Number of blocks
+        '400':
+          description: Missing or invalid CID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /block/stat:
+    post:
+      summary: Get block statistics
+      description: Get size of a single block.
+      operationId: getBlockStat
+      tags:
+        - Blockstore
+      parameters:
+        - name: arg
+          in: query
+          required: true
+          description: Content identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block stat retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Key:
+                    type: string
+                    description: CID
+                  Size:
+                    type: integer
+                    description: Block size in bytes
+        '400':
+          description: Missing or invalid CID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        peerId:
+          type: string
+          description: Libp2p peer ID of this node
+        agentVersion:
+          type: string
+          description: Agent version string (e.g., "helia-shard/0.5.1")
+        protocolVersion:
+          type: string
+          description: IPFS protocol version
+        connections:
+          type: integer
+          description: Current connection count
+        dhtMode:
+          type: string
+          description: DHT mode (typically "server")
+        uptime:
+          type: integer
+          description: Node uptime in seconds
+        multiaddrs:
+          type: array
+          items:
+            type: string
+          description: List of advertised multiaddrs
+    StatsResponse:
+      type: object
+      properties:
+        pins:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Number of pinned CIDs
+        dht:
+          type: object
+          properties:
+            providersAnnounced:
+              type: integer
+              description: Total successful announcements via /announce
+            lastAnnouncedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: ISO timestamp of last successful announcement (null if never)
+            lastAnnouncedAtUnix:
+              type: integer
+              description: Unix timestamp (seconds) of last announcement (−1 if never)
+        peers:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total known peers in peerStore
+            connected:
+              type: integer
+              description: Currently connected peers
+            inbound:
+              type: integer
+              description: Inbound connections
+            outbound:
+              type: integer
+              description: Outbound connections
+            agentVersions:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Count of peers by agent version (e.g., {"kubo/0.32.0": 30})
+            protocolBreakdown:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Count of peers supporting each protocol
+    BucketHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - error
+          description: Bucket health status
+        latencyMs:
+          type: integer
+          description: Measured latency in milliseconds
+        error:
+          type: string
+          nullable: true
+          description: Error message if status is "error"
+    PeersResponse:
+      type: object
+      properties:
+        peers:
+          type: array
+          items:
+            type: string
+          description: List of peer IDs
+        count:
+          type: integer
+    DetailedPeersResponse:
+      type: object
+      properties:
+        Peers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PeerDetail'
+    PeerDetail:
+      type: object
+      properties:
+        peer:
+          type: string
+          description: Peer ID
+        addr:
+          type: string
+          description: Peer multiaddr
+        direction:
+          type: string
+          enum:
+            - inbound
+            - outbound
+        status:
+          type: string
+          description: Connection status
+        latency:
+          type: integer
+          nullable: true
+          description: Latency to peer in milliseconds (if available)
+        agent:
+          type: string
+          nullable: true
+          description: Peer agent version string
+        muxer:
+          type: string
+          nullable: true
+          description: Stream multiplexer protocol
+        encryption:
+          type: string
+          nullable: true
+          description: Encryption protocol
+        timeline:
+          type: object
+          nullable: true
+          description: Connection timeline events
+        multiplexer:
+          type: string
+          nullable: true
+        direct:
+          type: boolean
+    ConnectionsResponse:
+      type: object
+      properties:
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Connection'
+        count:
+          type: integer
+    Connection:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Connection ID
+        remotePeer:
+          type: string
+          description: Remote peer ID
+        remoteAddr:
+          type: string
+          description: Remote multiaddr
+        direction:
+          type: string
+          enum:
+            - inbound
+            - outbound
+        status:
+          type: string
+        timeline:
+          type: object
+          nullable: true
+        multiplexer:
+          type: string
+          nullable: true
+        encryption:
+          type: string
+          nullable: true
+        direct:
+          type: boolean
+    ProvidersResponse:
+      type: object
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+        count:
+          type: integer
+        timedOut:
+          type: boolean
+          description: True if query timed out (partial results returned)
+    Provider:
+      type: object
+      properties:
+        peerId:
+          type: string
+        addrs:
+          type: array
+          items:
+            type: string
+          description: Multiaddrs of provider
+        protocols:
+          type: array
+          items:
+            type: string
+          nullable: true
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+          nullable: true
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Optional bearer token authentication.
+        Not currently enforced but recommended for production deployments.
+        Format: "Authorization: Bearer <token>"
+security:
+  - ApiKeyAuth: []

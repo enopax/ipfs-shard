@@ -1,0 +1,88 @@
+# Environment variables with credentials
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
+.tsc/
+
+# Development
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.log
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Node version manager
+.nvmrc
+
+# IDE & Editor
+.claude/
+.sublime-*
+*.code-workspace
+.editorconfig
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development & Local Testing
+*.tmp
+*.temp
+debug/
+temp/
+tmp/
+local/
+
+# PM2
+ecosystem.config.js
+.pm2/
+pm2.log
+
+# Development database/state
+.data/
+*.db
+*.sqlite
+
+# MinIO/S3 local testing
+minio-data/
+.minio.sys/
+
+# Private notes & local docs
+NOTES.md
+LOCAL_*.md
+PRIVATE_*.md
+personal/
+scratch/
+
+# Compiler output
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Generated artifacts
+dist/
+build/
+.tsc/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Profiling & benchmarks
+*.prof
+*.heapsnapshot
+benchmarks/
+profiling/
