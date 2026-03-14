@@ -86,3 +86,6 @@ docker-compose.override.yml
 *.heapsnapshot
 benchmarks/
 profiling/
+
+ipfs-shard.sublime-project
+ipfs-shard.sublime-workspace
