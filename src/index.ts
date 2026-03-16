@@ -60,6 +60,7 @@ async function main(): Promise<void> {
 		const { node, blockstore } = await setupIPFSNode(rawBlockstore, datastore)
 
 		const internalPort = parseInt(process.env.NODE_INTERNAL_PORT || '3001', 10)
+		const internalHost = process.env.API_HOST ?? '0.0.0.0'
 
 		// Create S3 health check
 		const checkS3Health = createS3HealthCheck(s3Client)
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
 			node,
 			blockstore,
 			port: internalPort,
+			host: internalHost,
 			version: VERSION,
 			checkS3Health,
 		})

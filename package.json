@@ -1,6 +1,6 @@
 {
   "name": "ipfs-shard",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "type": "module",
   "description": "Production-ready, server-native IPFS node with S3 storage option and strong peer connectivity",
   "author": "Glashaus",

@@ -10,6 +10,7 @@ export interface InternalAPIOptions {
 	node: IPFSNode
 	blockstore: Blockstore
 	port: number
+	host?: string
 	version?: string
 	checkS3Health?: () => Promise<boolean>
 }
@@ -23,7 +24,7 @@ function getClientIp(req: http.IncomingMessage): string {
 }
 
 export async function startInternalAPI(options: InternalAPIOptions): Promise<http.Server> {
-	const { node, blockstore, port, version = '0.0.0', checkS3Health } = options
+	const { node, blockstore, port, host = '0.0.0.0', version = '0.0.0', checkS3Health } = options
 
 	const server = http.createServer(async (req, res) => {
 		const startTime = Date.now()
@@ -58,7 +59,51 @@ export async function startInternalAPI(options: InternalAPIOptions): Promise<htt
 			return originalEnd(...args)
 		}
 
-		try {
+	// --- CORS & API Key ---
+	const isDev = process.env.NODE_ENV === 'development'
+
+	// CORS
+	let corsOrigin = '*'
+	if (!isDev) {
+		const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+			.split(',').map(s => s.trim()).filter(Boolean)
+		const requestOrigin = req.headers['origin']
+		if (allowedOrigins.length > 0) {
+			if (typeof requestOrigin === 'string' && allowedOrigins.includes(requestOrigin)) {
+				corsOrigin = requestOrigin
+			} else {
+				corsOrigin = allowedOrigins[0]
+			}
+		}
+	}
+	res.setHeader('Access-Control-Allow-Origin', corsOrigin)
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Api-Key')
+	res.setHeader('Access-Control-Max-Age', '86400')
+
+	if (method === 'OPTIONS') {
+		res.writeHead(204)
+		res.end()
+		return
+	}
+
+	// --- API Key ---
+	const apiKey = process.env.API_KEY
+	if (!isDev && apiKey) {
+		const provided = req.headers['x-api-key']
+		if (!provided) {
+			res.writeHead(401, { 'Content-Type': 'application/json' })
+			res.end(JSON.stringify({ error: 'Authentication required' }))
+			return
+		}
+		if (provided !== apiKey) {
+			res.writeHead(403, { 'Content-Type': 'application/json' })
+			res.end(JSON.stringify({ error: 'Forbidden' }))
+			return
+		}
+	}
+
+	try {
 			// Route request to appropriate handler
 			const handled = await createApiRouter(
 				{ node, blockstore, version, checkS3Health },
@@ -80,8 +125,8 @@ export async function startInternalAPI(options: InternalAPIOptions): Promise<htt
 	})
 
 	return new Promise((resolve, reject) => {
-		server.listen(port, '0.0.0.0', () => {
-			logger.info({ port, host: '0.0.0.0' }, 'Internal API server started')
+		server.listen(port, host, () => {
+			logger.info({ port, host }, 'Internal API server started')
 			resolve(server)
 		})
 		server.on('error', reject)

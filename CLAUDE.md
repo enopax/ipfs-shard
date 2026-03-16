@@ -27,6 +27,7 @@ This is a production-ready **custom-built IPFS node** that provides an HTTP API 
 Comprehensive documentation is available in the `docs/` directory:
 
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Helia + Kubo delegated routing pattern, system design
+- **[API_AUTH.md](docs/API_AUTH.md)** — API authentication (dev/prod modes, Next.js integration, environment setup)
 - **[PEER_DISCOVERY.md](docs/PEER_DISCOVERY.md)** — libp2p peer discovery architecture (bootstrap, DHT, delegated routing) - **READ THIS BEFORE MODIFYING NETWORKING**
 - **[GATEWAY_INTEGRATION.md](docs/GATEWAY_INTEGRATION.md)** — How to use the IPFS gateway (port 4040) to display file previews in your app
 - **[TESTING.md](docs/TESTING.md)** — Complete testing guide (45 automated tests, 9 skipped)
@@ -212,6 +213,8 @@ mc mb local/glashaus-blocks --ignore-existing
 
 All endpoints are on the internal API server (port 4000 by default, configurable via `NODE_INTERNAL_PORT`).
 
+**Authentication:** See [API_AUTH.md](docs/API_AUTH.md) for development/production authentication setup and Next.js integration.
+
 ### Health & Status
 - `GET /health` - Health check; returns peer ID, connection count, DHT mode, uptime, multiaddrs
 
@@ -224,7 +227,7 @@ All endpoints are on the internal API server (port 4000 by default, configurable
 - `GET /providers/:cid` - Find DHT providers for a CID; returns providers list with peer IDs and addresses; respects timeout
 - `GET /blocks/:cid` - Check if a block exists in the S3 blockstore; returns `{ "cid": "...", "exists": true/false }`
 
-### Content Announcement (Next.js → helia-shard)
+### Content Announcement (Next.js → ipfs-shard)
 - `POST /announce` — Announce content to DHT; request body: `{ "cid": "..." }` (called by Next.js after upload)
 
 ## Architecture Patterns

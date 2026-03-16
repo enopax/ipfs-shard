@@ -3,6 +3,7 @@ import { S3Datastore } from 'datastore-s3'
 import { MemoryBlockstore } from 'blockstore-core'
 import { MemoryDatastore } from 'datastore-core'
 import { S3Client, CreateBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3'
+import { NodeHttpHandler } from '@smithy/node-http-handler'
 import type { Datastore } from 'interface-datastore'
 import type { Blockstore } from 'interface-blockstore'
 import { logger } from '@/logger.js'
@@ -24,6 +25,10 @@ export function createS3Client(): S3Client {
 			accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
 			secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
 		},
+		requestHandler: new NodeHttpHandler({
+			maxSockets: 200,
+			socketAcquisitionWarningTimeout: 30000,
+		}),
 	})
 }
 
