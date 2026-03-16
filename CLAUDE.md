@@ -77,24 +77,10 @@ This project requires specific configuration to work correctly with ESM and Type
    - Development: `npm run dev` (uses nodemon + tsx)
    - Direct execution: `npm start` (uses tsx directly)
 
-### Path Aliases
-
-The project uses TypeScript path aliases for cleaner imports:
-
-- `@/*` → `src/*` - General src imports
-- `@api/*` → `src/api/*` - API-related modules
-- `@storage/*` → `src/storage/*` - Helia/IPFS storage modules
-- `@utils/*` → `src/utils/*` - Utility functions
-- `@websocket/*` → `src/websocket/*` - WebSocket server modules
-- `@upload/*` → `src/upload/*` - Upload handling modules
-
 **Example:**
 ```typescript
 // Instead of: import { logger } from '../utils/logger.js'
 import { logger } from '@utils/logger.js'
-
-// Instead of: import { initialiseHelia } from './storage/helia-client.js'
-import { initialiseHelia } from '@storage/helia-client.js'
 ```
 
 **Note:** You still need to include the `.js` extension (required for ESM compatibility).
