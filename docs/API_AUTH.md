@@ -7,7 +7,11 @@ This document explains how API authentication works in ipfs-shard and how to imp
 The API supports two authentication modes depending on the environment:
 
 - **Development (`NODE_ENV=development`)**: No authentication required, all origins allowed
-- **Production**: CORS origin validation + optional API key authentication
+- **Production**: CORS origin validation + API key authentication (required)
+
+### Security Status
+
+✅ **The HTTP API is now secured with API key authentication.** You no longer need to restrict the API to `localhost` — the API can be bound to `0.0.0.0` and safely exposed to the network. Authentication via the `X-Api-Key` header protects all administrative operations (pins, announcements, etc.).
 
 ## Environment Variables
 
@@ -322,7 +326,7 @@ curl -H "X-Api-Key: secret123" http://localhost:4000/health
 | Variable | Purpose | Dev Default | Prod Default |
 |----------|---------|-------------|--------------|
 | `NODE_ENV` | Environment mode | `development` | `production` |
-| `API_KEY` | Secret authentication key | (empty) | Required |
-| `ALLOWED_ORIGINS` | CORS whitelist | `*` | Required |
+| `API_KEY` | Secret authentication key (required in production) | (empty) | (must be set) |
+| `ALLOWED_ORIGINS` | CORS whitelist | `*` | (must be set) |
 | `NODE_INTERNAL_PORT` | API server port | `4000` | `4000` |
-| `API_HOST` | Bind address | `0.0.0.0` | `127.0.0.1` |
+| `API_HOST` | Bind address | `0.0.0.0` | `0.0.0.0` (secured by API key) |

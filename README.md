@@ -38,7 +38,7 @@ Perfect for:
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/ipfs-shard.git
+git clone https://github.com/enopax/ipfs-shard.git
 cd ipfs-shard
 npm install
 ```
@@ -160,24 +160,25 @@ test/
 
 **ipfs-shard** operates two distinct networks with different security requirements:
 
-#### 1. HTTP API (Port 4000) — Admin Interface
-- **Purpose:** Glashaus and internal applications control the IPFS node
+#### 1. HTTP API (Port 4000) — Secured Admin Interface
+- **Purpose:** Applications control the IPFS node (upload announcements, block checks, metrics)
 - **Endpoints:** `/health`, `/pin`, `/announce`, `/metrics`, etc.
 - **Default binding:** `0.0.0.0` (all interfaces)
-- **Recommendation:** Restrict to `127.0.0.1` (localhost only) for local deployments
+- **Security:** API key authentication required in production
 
 ```env
-# .env
-API_HOST=127.0.0.1          # Restrict to localhost
-# API_HOST=0.0.0.0          # Only if behind authenticated reverse proxy
+# .env — Production
+NODE_ENV=production
+API_KEY=your-secret-key-here         # Required for authentication
+ALLOWED_ORIGINS=https://yourapp.com  # CORS whitelist
 ```
 
-**Why restrict?** The HTTP API allows administrative operations:
-- Adding/removing pins (`POST /pin`, `DELETE /pin`)
-- Announcing content to DHT (`POST /announce`)
-- Connecting to arbitrary peers (`POST /connect`)
+**Authentication:** All requests in production must include the `X-Api-Key` header:
+```bash
+curl -H "X-Api-Key: your-secret-key" http://api.example.com/health
+```
 
-These operations should only be accessible to trusted applications.
+**No longer required to restrict to localhost** — The API is now secured with API key authentication. You can bind to `0.0.0.0` and expose the API publicly. See [docs/API_AUTH.md](docs/API_AUTH.md) for complete authentication setup and Next.js integration.
 
 #### 2. libp2p Ports (4001 TCP, 4002 WebSocket) — P2P Network
 - **Purpose:** Peer-to-peer IPFS communication
@@ -202,10 +203,10 @@ These operations are cryptographically signed and designed for untrusted network
 
 ### Security Summary
 
-| Network | Port | Public | Why |
-|---------|------|--------|-----|
-| HTTP API | 4000 | ❌ Restrict to localhost | Admin control interface |
-| libp2p | 4001-4002 | ✅ Must be public | P2P block exchange & discovery |
+| Network | Port | Public | Security |
+|---------|------|--------|----------|
+| HTTP API | 4000 | ✅ Can be public | API key authentication required |
+| libp2p | 4001-4002 | ✅ Must be public | Cryptographic signing + untrusted network design |
 
 ## API Endpoints
 
@@ -242,8 +243,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the complete API specificat
 
 ### Optional
 - `S3_REGION` — AWS region (default: `us-east-1`)
+- `NODE_ENV` — Environment mode (`development` or `production`); dev mode disables API key checks (default: `development`)
+- `API_KEY` — Secret authentication key for securing the HTTP API in production (required for production deployments)
+- `ALLOWED_ORIGINS` — Comma-separated list of allowed CORS origins in production (e.g., `https://yourapp.com`)
 - `NODE_INTERNAL_PORT` — API port (default: `4000`)
-- `API_HOST` — HTTP API binding address; use `127.0.0.1` for localhost, `0.0.0.0` only if behind authenticated reverse proxy (default: `0.0.0.0`) — **See [Network Security](#network-security)**
+- `API_HOST` — HTTP API binding address (`0.0.0.0` for public access or `127.0.0.1` for localhost; default: `0.0.0.0`) — **API key authentication required in production**
 - `ANNOUNCE_IP` — Public IP for peer announcements (critical for public deployments; default: `127.0.0.1`)
 - `LIBP2P_PORT` — TCP port (default: `4001`)
 - `LIBP2P_WS_PORT` — WebSocket port (default: `4002`)
@@ -384,8 +388,8 @@ MIT — See [LICENSE](LICENSE) file.
 
 ## Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/ipfs-shard/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/ipfs-shard/discussions)
+- **Issues:** [GitHub Issues](https://github.com/enopax/ipfs-shard/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/enopax/ipfs-shard/discussions)
 - **Documentation:** See [docs/](docs/) directory
 
 ---
