@@ -377,7 +377,6 @@ MIT — See [LICENSE](LICENSE) file.
 
 ## Further Reading
 
-- **[docs/README.md](docs/README.md)** — Documentation index
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Deep dive into system design
 - **[docs/PEER_DISCOVERY.md](docs/PEER_DISCOVERY.md)** — Peer discovery & DHT operation
 - **[docs/BEST-PRACTISES.md](docs/BEST-PRACTISES.md)** — Development patterns and best practices
