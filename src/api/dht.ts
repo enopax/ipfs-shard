@@ -1,6 +1,6 @@
 import http from 'http'
 import { CID } from 'multiformats'
-import { logger } from '@/logger.js'
+import { logger, logDHT } from '@/logger.js'
 import { dhtLastAnnounceGauge } from '@/metrics.js'
 import { parseJsonBody, getQueryParam } from './helpers.js'
 import type { RouteContext } from './http-router.js'
@@ -15,13 +15,13 @@ export async function announceContent(ctx: RouteContext, cid: CID, cidStr: strin
 	try {
 		await ctx.node.dht.setStatus(cid, { status: 'pending', announcedAt: Date.now() })
 	} catch (err) {
-		logger.warn({ cid: cidStr }, 'Failed to write pending DHT status')
+		logDHT('Failed to write pending DHT status', { cid: cidStr })
 	}
 
 	ctx.node.routing.provide(cid).then(
 		async () => {
 			await ctx.node.dht.setStatus(cid, { status: 'success', announcedAt: Date.now() })
-			logger.info({ cid: cidStr }, 'Content announced to DHT')
+			logDHT('Content announced to DHT', { cid: cidStr })
 		},
 		async (err: unknown) => {
 			await ctx.node.dht.setStatus(cid, {
@@ -29,7 +29,7 @@ export async function announceContent(ctx: RouteContext, cid: CID, cidStr: strin
 				announcedAt: Date.now(),
 				error: String(err),
 			})
-			logger.warn({ cid: cidStr, error: String(err) }, 'Content announcement failed')
+			logDHT('Content announcement failed', { cid: cidStr, error: String(err) })
 		}
 	)
 }
@@ -60,7 +60,7 @@ export async function handleDht(
 				res.writeHead(200, { 'Content-Type': 'application/json' })
 				res.end(JSON.stringify({ ok: true }))
 			} catch (err) {
-				logger.error({ cid: cidStr, error: String(err) }, 'Failed to announce content')
+				logDHT('Failed to announce content', { cid: cidStr, error: String(err) })
 				res.writeHead(500, { 'Content-Type': 'application/json' })
 				res.end(JSON.stringify({ error: 'Failed to announce content', details: String(err) }))
 			}
@@ -145,7 +145,7 @@ export async function handleDht(
 			)
 		}
 	} catch (err) {
-		logger.error({ error: String(err) }, 'Failed to handle DHT request')
+		logDHT('Failed to handle DHT request', { error: String(err) })
 		res.writeHead(500, { 'Content-Type': 'application/json' })
 		res.end(JSON.stringify({ error: 'Internal server error' }))
 	}

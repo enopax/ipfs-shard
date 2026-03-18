@@ -4,7 +4,7 @@ import type { CID } from 'multiformats'
 import type { Libp2p } from '@libp2p/interface'
 import type { SimpleBitswap } from './bitswap.js'
 import { multiaddr } from '@multiformats/multiaddr'
-import { logger } from './logger.js'
+import { logger, logDHT } from './logger.js'
 
 const BITSWAP_TIMEOUT_MS = parseInt(process.env.BITSWAP_WANT_TIMEOUT_MS || '5000', 10)
 const DHT_TIMEOUT_MS = parseInt(process.env.DHT_PROVIDER_TIMEOUT_MS || '5000', 10)
@@ -112,7 +112,7 @@ export class NetworkAwareBlockstore extends BaseBlockstore {
 			tryDHTRetrieval(this.libp2p, this.bitswap, cid, DHT_TIMEOUT_MS, BITSWAP_TIMEOUT_MS),
 		])
 		if (block !== null) {
-			logger.debug({ cid: cid.toString() }, 'Block retrieved from network (bitswap/DHT)')
+			logDHT('Block retrieved from network (bitswap/DHT)', { cid: cid.toString() })
 			try {
 				await this.s3Blockstore.put(cid, block)
 			} catch {
@@ -144,7 +144,7 @@ export class NetworkAwareBlockstore extends BaseBlockstore {
 					}
 					try {
 						const ipniBlock = await this.bitswap.want(cid, { signal: ipniController.signal })
-						logger.debug({ cid: cid.toString() }, 'Block retrieved from IPNI provider')
+						logDHT('Block retrieved from IPNI provider', { cid: cid.toString() })
 						try {
 							await this.s3Blockstore.put(cid, ipniBlock)
 						} catch {
@@ -158,7 +158,7 @@ export class NetworkAwareBlockstore extends BaseBlockstore {
 				}
 			}
 		} catch (err) {
-			logger.debug({ cid: cid.toString(), error: String(err) }, 'IPNI lookup failed or timed out')
+			logDHT('IPNI lookup failed or timed out', { cid: cid.toString(), error: String(err) })
 		} finally {
 			clearTimeout(ipniTimer)
 		}

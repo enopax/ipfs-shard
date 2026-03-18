@@ -1,5 +1,5 @@
 import type { IPFSNode } from './ipfs-node.js'
-import { logger } from './logger.js'
+import { logger, logDHT } from './logger.js'
 import { CID } from 'multiformats'
 import {
 	reprovideCounter,
@@ -44,9 +44,9 @@ export function startReprovideLoop(node: IPFSNode): () => void {
 				cids.push(cid.toString())
 			}
 
-			logger.info(
-				{ totalCids: cids.length, startTime: startLogTime },
-				'Re-provide loop started'
+			logDHT(
+				'Re-provide loop started',
+				{ totalCids: cids.length, startTime: startLogTime }
 			)
 
 			let successCount = 0
@@ -75,17 +75,17 @@ export function startReprovideLoop(node: IPFSNode): () => void {
 				} catch (err) {
 					reprovideErrorCounter.inc()
 					errorCount++
-					logger.warn(
-						{ cid: cidStr, error: String(err) },
-						'Failed to re-provide CID'
+					logDHT(
+						'Failed to re-provide CID',
+						{ cid: cidStr, error: String(err) }
 					)
 				}
 
 				// Log progress every 100 CIDs
 				if ((i + 1) % 100 === 0) {
-					logger.info(
-						{ processed: i + 1, totalCids: cids.length },
-						'Re-provide progress'
+					logDHT(
+						'Re-provide progress',
+						{ processed: i + 1, totalCids: cids.length }
 					)
 				}
 			}
@@ -100,23 +100,23 @@ export function startReprovideLoop(node: IPFSNode): () => void {
 
 			// Log warning if run took too long
 			if (duration > WARNING_DURATION_MS) {
-				logger.warn(
-					{ durationSeconds, totalCids: cids.length },
-					'Re-provide loop took longer than 1 hour (interval may be too tight for pin set size)'
+				logDHT(
+					'Re-provide loop took longer than 1 hour (interval may be too tight for pin set size)',
+					{ durationSeconds, totalCids: cids.length }
 				)
 			}
 
-			logger.info(
+			logDHT(
+				'Re-provide loop completed',
 				{
 					durationSeconds,
 					totalCids: cids.length,
 					successCount,
 					errorCount,
-				},
-				'Re-provide loop completed'
+				}
 			)
 		} catch (err) {
-			logger.error({ error: String(err) }, 'Error during re-provide loop')
+			logDHT('Error during re-provide loop', { error: String(err) })
 		}
 	}
 
@@ -138,9 +138,9 @@ export function startReprovideLoop(node: IPFSNode): () => void {
 		logger.info('Re-provide loop stopped')
 	}
 
-	logger.info(
-		{ initialDelayMs: INITIAL_DELAY_MS, intervalMs: REPROVIDE_INTERVAL_MS },
-		'Re-provide loop started'
+	logDHT(
+		'Re-provide loop started',
+		{ initialDelayMs: INITIAL_DELAY_MS, intervalMs: REPROVIDE_INTERVAL_MS }
 	)
 	return stop
 }

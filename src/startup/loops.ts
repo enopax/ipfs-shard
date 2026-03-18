@@ -1,6 +1,6 @@
 import type { Datastore } from 'interface-datastore'
 import type { Multiaddr } from '@multiformats/multiaddr'
-import { logger } from '@/logger.js'
+import { logger, logDHT } from '@/logger.js'
 import { startBackupBootstrapLoop } from '@/backup-bootstrap/index.js'
 import { startReprovideLoop } from '@/reprovide.js'
 import { webcrypto as crypto } from 'node:crypto'
@@ -150,19 +150,19 @@ export function startDHTDiscoveryLoop(node: any): () => void {
 					putEvents.push(event)
 				}
 
-				logger.debug(
-					{ connectedCount, announceCounter, putEvents: putEvents.length },
-					'DHT announcement sent'
+				logDHT(
+					'DHT announcement sent',
+					{ connectedCount, announceCounter, putEvents: putEvents.length }
 				)
 			} catch (err) {
 				// Timeout is expected - we triggered the DHT puts
-				logger.debug(
-					{ connectedCount, announceCounter, error: String(err) },
-					'DHT announcement completed'
+				logDHT(
+					'DHT announcement completed',
+					{ connectedCount, announceCounter, error: String(err) }
 				)
 			}
 		} catch (err) {
-			logger.debug({ error: String(err) }, 'DHT announcement error')
+			logDHT('DHT announcement error', { error: String(err) })
 		}
 	}
 

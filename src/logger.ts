@@ -18,9 +18,16 @@ function shouldLogBitswap(): boolean {
 	return logLevel === 'bitswap' || logLevel === 'trace'
 }
 
+// Determine if DHT logging should be enabled
+// Enabled ONLY when LOG_LEVEL='dht' or 'trace' (not 'debug')
+// This keeps DHT spam out of debug logs
+function shouldLogDHT(): boolean {
+	return logLevel === 'dht' || logLevel === 'trace'
+}
+
 // Create base logger configuration
 const loggerConfig: any = {
-	level: logLevel === 'peer' || logLevel === 'bitswap' ? 'debug' : logLevel, // Map 'peer'/'bitswap' to 'debug' for pino
+	level: logLevel === 'peer' || logLevel === 'bitswap' || logLevel === 'dht' ? 'debug' : logLevel, // Map 'peer'/'bitswap'/'dht' to 'debug' for pino
 	...(isDev && {
 		transport: {
 			target: 'pino-pretty',
@@ -51,6 +58,16 @@ export const logPeer = (message: string, data?: Record<string, any>) => {
  */
 export const logBitswap = (message: string, data?: Record<string, any>) => {
 	if (shouldLogBitswap()) {
+		logger.debug(data || {}, message)
+	}
+}
+
+/**
+ * Log DHT events (announcements, provider lookups, DHT operations).
+ * Only logs if LOG_LEVEL includes 'dht' or is 'trace'.
+ */
+export const logDHT = (message: string, data?: Record<string, any>) => {
+	if (shouldLogDHT()) {
 		logger.debug(data || {}, message)
 	}
 }
