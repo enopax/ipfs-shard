@@ -26,7 +26,6 @@ export function createS3Client(): S3Client {
 			secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
 		},
 		requestHandler: new NodeHttpHandler({
-			maxSockets: 200,
 			socketAcquisitionWarningTimeout: 30000,
 		}),
 	})
